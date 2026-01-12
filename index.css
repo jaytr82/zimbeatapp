@@ -1,0 +1,30 @@
+/* Zimbeat Styles */
+
+:root {
+  /* Default Fallbacks if not inside Telegram */
+  --tg-theme-bg-color: #f3f4f6;
+  --tg-theme-secondary-bg-color: #ffffff;
+  --tg-theme-text-color: #111827;
+  --tg-theme-hint-color: #6b7280;
+  --tg-theme-button-color: #3b82f6;
+  --tg-theme-button-text-color: #ffffff;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--tg-theme-bg-color);
+  color: var(--tg-theme-text-color);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overscroll-behavior-y: none;
+}
+
+#root {
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}

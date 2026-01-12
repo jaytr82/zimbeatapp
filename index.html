@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Zimbeat</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              // Brand Colors (Fixed)
+              primary: '#3b82f6',
+              secondary: '#1d4ed8',
+
+              // Adaptive Theme Colors (Mapped to Telegram)
+              background: 'var(--tg-theme-bg-color, #f3f4f6)',
+              surface: 'var(--tg-theme-secondary-bg-color, #ffffff)',
+              text: 'var(--tg-theme-text-color, #111827)',
+              hint: 'var(--tg-theme-hint-color, #6b7280)',
+
+              // Aliases to existing usage ensuring smooth transition
+              'gray-100': 'var(--tg-theme-bg-color, #f3f4f6)',
+              'gray-800': 'var(--tg-theme-text-color, #1f2937)',
+            },
+            spacing: {
+              'safe-top': 'env(safe-area-inset-top)',
+              'safe-bottom': 'env(safe-area-inset-bottom)',
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="/index.css">
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react/": "https://esm.sh/react@18.3.1/",
+    "react-dom": "https://esm.sh/react-dom@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "react-router-dom": "https://esm.sh/react-router-dom@6.23.0?deps=react@18.3.1,react-dom@18.3.1",
+    "lucide-react": "https://esm.sh/lucide-react@0.379.0?deps=react@18.3.1",
+    "react-player/youtube": "https://esm.sh/react-player@2.16.0/youtube?deps=react@18.3.1",
+    "@tonconnect/ui-react": "https://esm.sh/@tonconnect/ui-react@2.0.2?deps=react@18.3.1,react-dom@18.3.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react-player/": "https://esm.sh/react-player@^3.4.0/"
+  }
+}
+</script>
+  </head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

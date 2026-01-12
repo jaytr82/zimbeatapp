@@ -1,0 +1,40 @@
+{
+  "name": "zimbeat",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
+    "@tonconnect/sdk": "^3.3.1",
+    "@tonconnect/ui-react": "^2.3.1",
+    "lucide-react": "^0.379.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-player": "^3.4.0",
+    "react-router-dom": "^6.23.0",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.23",
+    "jsdom": "^27.4.0",
+    "postcss": "^8.5.6",
+    "typescript": "~5.8.2",
+    "vite": "^6.4.1",
+    "vitest": "^4.0.17"
+  }
+}

@@ -24,7 +24,7 @@ export const CONFIG = {
   TREASURY_WALLET: '0QBKCxuIweArnr4TzRtD_osA2dfCm2g8FluRILHhIyB0lUFt',
   
   // App Manifest for Wallet Connection
-  MANIFEST_URL: 'https://zimbeatapp.vercel.app',
+  MANIFEST_URL: 'https://zimbeatapp.vercel.app/tonconnect-manifest.json',
   
   // Feature Flags
   ENABLE_ANALYTICS: true,

@@ -18,9 +18,13 @@ serve(async (req) => {
 
   try {
     // 1. Explicit Header Validation
-    const authHeader = req.headers.get('Authorization');
+    // Log all headers to debug what is actually arriving
+    // console.log("Incoming Headers:", JSON.stringify(Object.fromEntries(req.headers.entries())));
+
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    
     if (!authHeader) {
-        console.error("[Auth] Request missing Authorization header");
+        console.error("[Auth] Request missing Authorization header.");
         return new Response(
             JSON.stringify({ error: "Unauthorized: Missing credentials" }),
             { 

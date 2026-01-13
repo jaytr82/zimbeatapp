@@ -32,13 +32,20 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
   const url = `${CONFIG.API_BASE_URL}${endpoint}`;
   
-  const headers: HeadersInit = {
+  // Robust header construction
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-App-Version': CONFIG.APP_VERSION,
     'X-Client-Platform': 'twa', // Telegram Web App
-    ...(options.headers || {}),
   };
 
+  // Merge options.headers if present
+  if (options.headers) {
+    const customHeaders = options.headers as Record<string, string>;
+    Object.assign(headers, customHeaders);
+  }
+
+  // Explicitly set Authorization
   headers['Authorization'] = `Bearer ${token}`;
 
   try {

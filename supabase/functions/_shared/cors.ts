@@ -2,8 +2,8 @@
 export const corsHeaders = (origin: string | null) => {
   const allowedOrigins = [
     'https://web.telegram.org',
-    'https://zimbeatapp.vercel.app',
-    'https://zimbeatapp.vercel.app',
+    'https://zimmusichub.com', // Replace with your actual TWA domain
+    'http://localhost:5173'    // Allow local dev
   ];
 
   // Allow any localhost origin for development (http://localhost:5173, http://localhost:3000, etc.)

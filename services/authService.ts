@@ -30,20 +30,36 @@ export const authService = {
         body: JSON.stringify({ initData }),
       });
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || 'Authentication handshake failed');
+      // Parse response as text first to handle non-JSON errors (like 500s or 404s) gracefully
+      const text = await response.text();
+      let data: any = {};
+      
+      try {
+        if (text) data = JSON.parse(text);
+      } catch (e) {
+        console.error("Auth Response parse error:", text);
+        throw new Error(`Server returned invalid format (${response.status})`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        // Prefer the explicit error message from backend, fallback to status text
+        const errorMessage = data.error || data.message || `Auth Error: ${response.status} ${response.statusText}`;
+        console.warn("Auth Handshake Failed:", errorMessage);
+        throw new Error(errorMessage);
+      }
+
+      if (!data.accessToken) {
+        throw new Error('Invalid response: Missing access token');
+      }
       
       // Store token in memory singleton
       currentToken = data.accessToken;
       
-      return data;
-    } catch (error) {
-      console.error('Login Error:', error);
-      throw error;
+      return data as LoginResponse;
+    } catch (error: any) {
+      console.error('Login Process Error:', error);
+      // Ensure the UI gets a readable message
+      throw new Error(error.message || 'Authentication handshake failed');
     }
   },
 

@@ -41,7 +41,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
     if (!botToken || !jwtSecret) {
-      throw new Error('Missing configuration secrets')
+      console.error("Missing Secrets: BOT_TOKEN or JWT_SECRET");
+      throw new Error('Server misconfiguration: Missing secrets')
     }
 
     // 1. VALIDATE TELEGRAM DATA
@@ -49,7 +50,7 @@ serve(async (req) => {
     const hash = urlParams.get('hash')
     
     if (!hash) {
-      throw new Error('Missing hash')
+      throw new Error('Missing hash in initData')
     }
 
     urlParams.delete('hash')
@@ -60,12 +61,10 @@ serve(async (req) => {
     
     // Strict time window: 24h past, 5 min future (clock skew)
     if (now - authDate > 86400) {
-       throw new Error('Data is too old')
+       console.error(`Auth expired: now=${now}, authDate=${authDate}`);
+       throw new Error('Data is too old (expired)')
     }
-    if (authDate - now > 300) {
-       throw new Error('Data is from the future')
-    }
-
+    
     // Sort keys alphabetically
     const paramsArray = Array.from(urlParams.entries())
     paramsArray.sort(([a], [b]) => a.localeCompare(b))
@@ -103,6 +102,7 @@ serve(async (req) => {
     const signatureHex = new TextDecoder().decode(hex.encode(new Uint8Array(signature)))
 
     if (signatureHex !== hash) {
+      console.error("Signature Mismatch", { expected: signatureHex, received: hash });
       throw new Error('Invalid signature')
     }
 
@@ -151,7 +151,10 @@ serve(async (req) => {
         .select('id, role')
         .single()
 
-      if (insertError) throw insertError
+      if (insertError) {
+        console.error("User Insert Error:", insertError);
+        throw insertError
+      }
       userId = newUser.id
       role = newUser.role
     }
@@ -175,7 +178,7 @@ serve(async (req) => {
         accessToken: token, 
         user: { 
           id: userId, 
-          role: role,
+          role: role, 
           telegram_id: telegramUser.id 
         } 
       }),
@@ -186,8 +189,9 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    console.error("Auth Handshake Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Unknown server error' }),
       { 
         headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
         status: 401

@@ -1,5 +1,7 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { corsHeaders } from '../_shared/cors.ts'
 
 // Declare Deno global for TypeScript environments
 declare const Deno: {
@@ -8,14 +10,11 @@ declare const Deno: {
   };
 };
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
 serve(async (req) => {
+  const origin = req.headers.get('Origin');
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders(origin) })
   }
 
   try {
@@ -47,11 +46,6 @@ serve(async (req) => {
     const { data: posts, error } = await query;
     if (error) throw error;
 
-    // If authenticated, we need to fetch user-specific context
-    // We do this separately or via advanced RLS filtering, but distinct queries
-    // for 'my_likes' is often cleaner in Supabase JS than complex joins if data set is small (50 items).
-    // Or we use the 'likes!left' with filter trick, but Supabase JS filter applies to the parent usually.
-    
     let myLikes = new Set();
     let myFollows = new Set();
 
@@ -94,14 +88,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(feed),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' },
         status: 400
       }
     )

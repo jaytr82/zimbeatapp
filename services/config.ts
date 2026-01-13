@@ -1,6 +1,18 @@
 // Centralized Configuration for Zim Music Hub
 // NOTE: Sensitive keys (Service Role, Bot Token) must NEVER be added here.
 // They are injected strictly into Backend Edge Functions via Supabase Secrets.
+const getEnv = (key: string): string => {
+  let value = '';
+  // Try Vite's import.meta.env
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    value = (import.meta as any).env[key] || '';
+  }
+  // Fallback to process.env (if polyfilled)
+  if (!value && typeof process !== 'undefined' && process.env) {
+    value = process.env[key] || '';
+  }
+  return value ? value.trim() : '';
+};
 
 export const CONFIG = {
   // App Metadata
@@ -10,10 +22,10 @@ export const CONFIG = {
   // We use import.meta.env for Vite compatibility.
   // Default fallback is set to local Supabase Edge Runtime for development.
   // In production, set VITE_API_URL to your deployed Supabase project URL (e.g. https://<project>.supabase.co/functions/v1)
-  API_BASE_URL: (import.meta as any).env?.VITE_API_URL || 'https://kbxuyrxmvbevivyekviv.supabase.co/functions/v1',
+  API_BASE_URL: getEnv('VITE_API_URL') ||  'https://kbxuyrxmvbevivyekviv.supabase.co/functions/v1',
 
     // Supabase Anon Key (Required for API Gateway access if Verify JWT is enabled)
-  SUPABASE_ANON_KEY: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '',
+  SUPABASE_ANON_KEY: getEnv('VITE_SUPABASE_ANON_KEY'),
 
 
   // TON Blockchain (Testnet)

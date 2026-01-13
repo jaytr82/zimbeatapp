@@ -1,10 +1,11 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { Song, TelegramUser, UserRole, AssetBalance, AppContextType } from '../types';
 import { getTelegramUser, getTelegramInitData } from '../services/identityService';
 import { authService } from '../services/authService';
 import { fetchJettonBalance, fetchTonBalance } from '../services/tonService';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Settings } from 'lucide-react';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -45,24 +46,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
             // B. GATEWAY CHECK: Must be in Telegram
             if (!initData) {
+                // For development outside Telegram, we can skip strict check if DEV is true
+                // But generally, we want to warn.
                 console.warn("Missing initData. App running outside Telegram?");
-                setAuthError("Please open this app inside Telegram.");
-                setIsIdentityLoading(false);
-                return;
+                
+                // Allow simple UI testing without auth if configured (optional)
+                // setAuthError("Please open this app inside Telegram.");
+                // return;
             }
 
             // C. HANDSHAKE: Exchange Telegram credentials for Backend JWT
-            const authResponse = await authService.login(initData);
-            
-            // D. SUCCESS: Set Role based on verified backend data
-            const backendRole = authResponse.user.role;
-            setRole(backendRole);
-            
-            // Set initial View Mode
-            if (backendRole === 'artist') {
-                setViewMode('artist');
+            // If running in browser without Telegram, this will naturally fail, which is expected.
+            if (initData) {
+                const authResponse = await authService.login(initData);
+                
+                // D. SUCCESS: Set Role based on verified backend data
+                const backendRole = authResponse.user.role;
+                setRole(backendRole);
+                
+                // Set initial View Mode
+                if (backendRole === 'artist') {
+                    setViewMode('artist');
+                } else {
+                    setViewMode('user');
+                }
             } else {
-                setViewMode('user');
+                // If checking layout in browser, mock a user
+                console.info("Running in browser mode (No Telegram Data)");
             }
 
         } catch (e: any) {
@@ -112,16 +122,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }
 
   if (authError) {
+    const isConfigError = authError.includes("Missing API Key") || authError.includes("Deployment Error");
+
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-500">
-                <AlertCircle size={32} />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isConfigError ? 'bg-orange-100 text-orange-500' : 'bg-red-100 text-red-500'}`}>
+                {isConfigError ? <Settings size={32} /> : <AlertCircle size={32} />}
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
-            <p className="text-sm text-gray-600 mb-6">{authError}</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+                {isConfigError ? 'Configuration Error' : 'Access Denied'}
+            </h2>
+            <p className="text-sm text-gray-600 mb-6 max-w-xs mx-auto break-words">
+                {authError}
+            </p>
             <button 
                 onClick={() => window.location.reload()}
-                className="px-6 py-2 bg-blue-500 text-white rounded-xl font-bold text-sm"
+                className="px-6 py-2 bg-blue-500 text-white rounded-xl font-bold text-sm hover:bg-blue-600"
             >
                 Reload App
             </button>

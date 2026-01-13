@@ -21,20 +21,22 @@ export const authService = {
       throw new Error("No Telegram initData found. Please open in Telegram.");
     }
 
+    // CRITICAL CONFIG CHECK
+    if (!CONFIG.SUPABASE_ANON_KEY) {
+        console.error("VITE_SUPABASE_ANON_KEY is missing in config.");
+        throw new Error("Deployment Error: Missing API Key. Please set VITE_SUPABASE_ANON_KEY in Vercel.");
+    }
+
     try {
       // Construct Headers
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        // Supabase Gateway requires 'Authorization: Bearer <anon_key>' for requests 
+        // to functions with "Verify JWT" enabled.
+        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+        // Some older Kong configurations also look for 'apikey'
+        'apikey': CONFIG.SUPABASE_ANON_KEY
       };
-
-      // Important: Supabase Gateway often requires the Anon Key to allow the request
-      // even for public endpoints like telegram-auth.
-      if (CONFIG.SUPABASE_ANON_KEY) {
-        headers['Authorization'] = `Bearer ${CONFIG.SUPABASE_ANON_KEY}`;
-        headers['apikey'] = CONFIG.SUPABASE_ANON_KEY;
-      } else {
-        console.warn("Missing VITE_SUPABASE_ANON_KEY. Handshake might fail if 'Verify JWT' is enabled on backend.");
-      }
 
       const response = await fetch(`${CONFIG.API_BASE_URL}/telegram-auth`, {
         method: 'POST',
@@ -50,9 +52,9 @@ export const authService = {
         if (text) data = JSON.parse(text);
       } catch (e) {
         console.error("Auth Response parse error:", text);
-        // If it's the "Missing authorization header" HTML error from Kong/Supabase, text will reveal it
-        if (text.includes("authorization header")) {
-             throw new Error("Gateway Error: Missing Supabase Anon Key. Please check Vercel env vars.");
+        // If it's the specific Gateway error
+        if (text.toLowerCase().includes("authorization header")) {
+             throw new Error("Gateway Access Denied. The provided API Key might be invalid.");
         }
         throw new Error(`Server returned invalid format (${response.status})`);
       }

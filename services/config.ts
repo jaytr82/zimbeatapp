@@ -12,6 +12,10 @@ export const CONFIG = {
   // In production, set VITE_API_URL to your deployed Supabase project URL (e.g. https://<project>.supabase.co/functions/v1)
   API_BASE_URL: (import.meta as any).env?.VITE_API_URL || 'https://kbxuyrxmvbevivyekviv.supabase.co/functions/v1',
 
+    // Supabase Anon Key (Required for API Gateway access if Verify JWT is enabled)
+  SUPABASE_ANON_KEY: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '',
+
+
   // TON Blockchain (Testnet)
   TON_API_ENDPOINT: 'https://testnet.tonapi.io/v2',
   

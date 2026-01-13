@@ -46,6 +46,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   }
 
   // Explicitly set Authorization
+  // Note: We use the session JWT here, not the Anon Key, because we are now authenticated
   headers['Authorization'] = `Bearer ${token}`;
 
   try {

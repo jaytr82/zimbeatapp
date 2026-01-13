@@ -22,11 +22,23 @@ export const authService = {
     }
 
     try {
+      // Construct Headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Important: Supabase Gateway often requires the Anon Key to allow the request
+      // even for public endpoints like telegram-auth.
+      if (CONFIG.SUPABASE_ANON_KEY) {
+        headers['Authorization'] = `Bearer ${CONFIG.SUPABASE_ANON_KEY}`;
+        headers['apikey'] = CONFIG.SUPABASE_ANON_KEY;
+      } else {
+        console.warn("Missing VITE_SUPABASE_ANON_KEY. Handshake might fail if 'Verify JWT' is enabled on backend.");
+      }
+
       const response = await fetch(`${CONFIG.API_BASE_URL}/telegram-auth`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ initData }),
       });
 
@@ -38,6 +50,10 @@ export const authService = {
         if (text) data = JSON.parse(text);
       } catch (e) {
         console.error("Auth Response parse error:", text);
+        // If it's the "Missing authorization header" HTML error from Kong/Supabase, text will reveal it
+        if (text.includes("authorization header")) {
+             throw new Error("Gateway Error: Missing Supabase Anon Key. Please check Vercel env vars.");
+        }
         throw new Error(`Server returned invalid format (${response.status})`);
       }
 

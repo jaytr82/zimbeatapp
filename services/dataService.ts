@@ -23,11 +23,15 @@ export class ApiError extends Error {
  * Generic Fetch Wrapper with Error Handling, Auth Injection, and Security Headers
  */
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = authService.getAccessToken();
+  
+  // Prevent request if no token is available (Gatekeeper Check)
+  if (!token) {
+     throw new ApiError("Session expired or invalid. Please reload.", 401);
+  }
+
   const url = `${CONFIG.API_BASE_URL}${endpoint}`;
-
-  // Get a valid token (refreshing if necessary)
-  const token = await authService.getValidAccessToken();
-
+  
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     'X-App-Version': CONFIG.APP_VERSION,
@@ -35,9 +39,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     ...(options.headers || {}),
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  headers['Authorization'] = `Bearer ${token}`;
 
   try {
     const response = await fetch(url, {
@@ -46,47 +48,16 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     });
 
     if (response.status === 401) {
-      // Token might be expired, try refreshing once
-      console.warn("Unauthorized access. Attempting token refresh...");
-      try {
-        await authService.refreshToken();
-        // Retry the request with the new token
-        const newToken = authService.getAccessToken();
-        if (newToken) {
-          headers['Authorization'] = `Bearer ${newToken}`;
-          const retryResponse = await fetch(url, {
-            ...options,
-            headers,
-          });
-
-          if (retryResponse.status === 401) {
-            console.error("Token refresh failed, still unauthorized");
-            throw new ApiError('Authentication failed', 401);
-          }
-
-          if (!retryResponse.ok) {
-            const errorData = await retryResponse.json().catch(() => ({}));
-            throw new ApiError(
-                errorData.message || `API Error: ${retryResponse.statusText}`,
-                retryResponse.status
-            );
-          }
-
-          return await retryResponse.json();
-        }
-      } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
-        throw new ApiError('Authentication failed', 401);
-      }
+       console.warn("Unauthorized access. Token might be expired.");
     }
 
     if (response.status === 429) {
         const errorData = await response.json().catch(() => ({}));
         const retryAfter = errorData.retry_after_seconds || 10;
         throw new ApiError(
-            errorData.message || `Too fast! Wait ${retryAfter}s.`,
-            429,
-            'RATE_LIMIT_EXCEEDED',
+            errorData.message || `Too fast! Wait ${retryAfter}s.`, 
+            429, 
+            'RATE_LIMIT_EXCEEDED', 
             retryAfter
         );
     }
@@ -94,7 +65,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new ApiError(
-          errorData.message || `API Error: ${response.statusText}`,
+          errorData.message || `API Error: ${response.statusText}`, 
           response.status
       );
     }

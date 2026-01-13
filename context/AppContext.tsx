@@ -1,10 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useTonAddress } from '@tonconnect/ui-react';
 import { Song, TelegramUser, UserRole, AssetBalance, AppContextType } from '../types';
 import { getTelegramUser, getTelegramInitData } from '../services/identityService';
 import { authService } from '../services/authService';
 import { fetchJettonBalance, fetchTonBalance } from '../services/tonService';
+import { Loader2, AlertCircle } from 'lucide-react';
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -13,7 +13,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(null);
   const [role, setRole] = useState<UserRole>('user');
   const [viewMode, setViewMode] = useState<UserRole>('user');
+  
+  // Auth State
   const [isIdentityLoading, setIsIdentityLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   
   // Connect to TON Wallet Hook
   const walletAddress = useTonAddress(); 
@@ -31,73 +34,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const initApp = async () => {
         setIsIdentityLoading(true);
-        const user = getTelegramUser();
-        const initData = getTelegramInitData();
+        setAuthError(null);
 
-        setTelegramUser(user);
+        try {
+            // A. Get Environment Data
+            const user = getTelegramUser();
+            const initData = getTelegramInitData();
 
-        if (initData) {
-            try {
-                // Exchange Telegram credentials for Backend JWT
-                const authResponse = await authService.login(initData);
-                
-                // Set Role based on verified backend data
-                const backendRole = authResponse.user.role;
-                setRole(backendRole);
-                
-                // Set initial View Mode
-                if (backendRole === 'artist') {
-                    setViewMode('artist');
-                } else {
-                    setViewMode('user');
-                }
-            } catch (e) {
-                console.error("Auth handshake failed:", e);
-                // Fallback to basic 'user' role if backend is unreachable, 
-                // but strictly speaking app should probably block or retry.
-                setRole('user');
+            setTelegramUser(user);
+
+            // B. GATEWAY CHECK: Must be in Telegram
+            if (!initData) {
+                console.warn("Missing initData. App running outside Telegram?");
+                setAuthError("Please open this app inside Telegram.");
+                setIsIdentityLoading(false);
+                return;
             }
-        }
 
-        setIsIdentityLoading(false);
+            // C. HANDSHAKE: Exchange Telegram credentials for Backend JWT
+            const authResponse = await authService.login(initData);
+            
+            // D. SUCCESS: Set Role based on verified backend data
+            const backendRole = authResponse.user.role;
+            setRole(backendRole);
+            
+            // Set initial View Mode
+            if (backendRole === 'artist') {
+                setViewMode('artist');
+            } else {
+                setViewMode('user');
+            }
+
+        } catch (e: any) {
+            console.error("Auth Critical Failure:", e);
+            setAuthError(e.message || "Authentication failed. Please reload.");
+        } finally {
+            setIsIdentityLoading(false);
+        }
     };
 
     initApp();
   }, []);
-
-  // 1.5 Background Token Refresh (proactive refresh before expiry)
-  useEffect(() => {
-    if (!telegramUser) return;
-
-    const checkAndRefreshToken = async () => {
-      if (authService.isTokenExpired()) {
-        try {
-          console.log('Proactively refreshing token...');
-          await authService.refreshToken();
-          console.log('Token refreshed successfully');
-        } catch (error) {
-          console.error('Background token refresh failed:', error);
-        }
-      }
-    };
-
-    // Check every 30 minutes
-    const interval = setInterval(checkAndRefreshToken, 30 * 60 * 1000);
-
-    // Also check on app focus/visibility change
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        checkAndRefreshToken();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [telegramUser]);
 
   // 2. Fetch Real Balances (Wallet)
   useEffect(() => {
@@ -123,6 +100,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setTonBalance(ton);
     setIsBalanceLoading(false);
   };
+
+  // 3. RENDER GATES
+  if (isIdentityLoading) {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500">
+            <Loader2 className="animate-spin mb-4 text-blue-500" size={40} />
+            <p className="text-sm font-medium">Authenticating...</p>
+        </div>
+    );
+  }
+
+  if (authError) {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4 text-red-500">
+                <AlertCircle size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
+            <p className="text-sm text-gray-600 mb-6">{authError}</p>
+            <button 
+                onClick={() => window.location.reload()}
+                className="px-6 py-2 bg-blue-500 text-white rounded-xl font-bold text-sm"
+            >
+                Reload App
+            </button>
+        </div>
+    );
+  }
 
   return (
     <AppContext.Provider value={{ 

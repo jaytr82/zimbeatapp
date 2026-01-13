@@ -2,16 +2,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactPlayer from 'react-player';
 import Header from '../components/Header';
-import { fetchQuizQuestions, submitQuizResult, startQuizSession, verifyTransaction } from '../services/dataService';
+import { fetchQuizQuestions, submitQuizResult, startQuizSession, verifyTransaction, ApiError } from '../services/dataService';
 import { QuizQuestion } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { useTonConnectUI } from '@tonconnect/ui-react';
-import { Headphones, Loader2, PlayCircle, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { Headphones, Loader2, PlayCircle, Clock, CheckCircle2, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useTelegram } from '../hooks/useTelegram';
 import { useTransactionStatus } from '../hooks/useTransactionStatus';
 import { analytics } from '../services/analyticsService';
 
 type QuizState = 'IDLE' | 'STARTING' | 'BUFFERING' | 'PLAYING' | 'QUESTION' | 'RESULT';
+
+interface ViewState {
+  status: 'loading' | 'success' | 'error' | 'empty';
+  errorType?: 'auth' | 'network' | 'unknown';
+  errorMessage?: string;
+}
 
 const Quiz: React.FC = () => {
   const { walletAddress, refreshBalance } = useAppContext();
@@ -20,6 +26,7 @@ const Quiz: React.FC = () => {
   const { status: txStatus, handleTransaction, errorMessage } = useTransactionStatus();
   
   // Data State
+  const [viewState, setViewState] = useState<ViewState>({ status: 'loading' });
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   
@@ -35,7 +42,6 @@ const Quiz: React.FC = () => {
   const Player = ReactPlayer as any;
 
   // Refs
-  // Using 'any' here bypasses strict type checks that conflict between value/type definitions of ReactPlayer
   const playerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -43,12 +49,44 @@ const Quiz: React.FC = () => {
   }, [walletAddress]); 
 
   const loadQuestions = async () => {
+    setViewState({ status: 'loading' });
+    
     try {
       const qs = await fetchQuizQuestions();
-      setQuestions(qs);
-    } catch (e) {
+      
+      if (!qs || qs.length === 0) {
+         setViewState({ status: 'empty' });
+      } else {
+         setQuestions(qs);
+         setViewState({ status: 'success' });
+         // Reset index if out of bounds (e.g. after refresh)
+         setCurrentQIndex(0);
+      }
+    } catch (e: any) {
       console.warn("Failed to load questions", e);
-      analytics.track('error', { context: 'quiz_load', message: (e as Error).message });
+      
+      let type: 'auth' | 'network' | 'unknown' = 'unknown';
+      let msg = e.message || "Failed to load challenges.";
+
+      if (e instanceof ApiError) {
+          if (e.statusCode === 401 || e.statusCode === 403) {
+              type = 'auth';
+              msg = "Session expired or access denied.";
+          } else {
+              type = 'network';
+          }
+      } else if (e.name === 'TypeError' && e.message.includes('fetch')) {
+          type = 'network';
+          msg = "Network error. Check your connection.";
+      }
+
+      setViewState({ 
+          status: 'error', 
+          errorType: type, 
+          errorMessage: msg 
+      });
+      
+      analytics.track('error', { context: 'quiz_load', message: msg, type });
     }
   };
 
@@ -200,7 +238,62 @@ const Quiz: React.FC = () => {
     }
   };
 
-  if (!currentQ) return <div className="pt-20 text-center"><Loader2 className="animate-spin mx-auto text-primary"/></div>;
+  // --- RENDER STATES ---
+
+  if (viewState.status === 'loading') {
+    return (
+        <div className="pt-20 min-h-screen flex flex-col items-center justify-center text-gray-400">
+            <Loader2 className="animate-spin mb-4 text-primary" size={40} />
+            <p className="text-sm font-medium animate-pulse">Loading Challenges...</p>
+        </div>
+    );
+  }
+
+  if (viewState.status === 'error') {
+      return (
+        <div className="pt-20 min-h-screen flex flex-col items-center justify-center px-6 text-center">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${viewState.errorType === 'auth' ? 'bg-red-100 text-red-500' : 'bg-orange-100 text-orange-500'}`}>
+                <AlertTriangle size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+                {viewState.errorType === 'auth' ? 'Authentication Error' : 'Connection Failed'}
+            </h2>
+            <p className="text-gray-500 mb-6 max-w-xs mx-auto">
+                {viewState.errorMessage}
+            </p>
+            <button 
+                onClick={loadQuestions}
+                className="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-blue-600 transition-colors"
+            >
+                <RefreshCw size={18} />
+                Try Again
+            </button>
+        </div>
+      );
+  }
+
+  if (viewState.status === 'empty') {
+      return (
+        <div className="pt-20 min-h-screen flex flex-col items-center justify-center px-6 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400">
+                <Headphones size={32} />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">No Active Challenges</h2>
+            <p className="text-gray-500 mb-6">
+                Check back later for new music quizzes and rewards.
+            </p>
+            <button 
+                onClick={loadQuestions}
+                className="text-primary font-bold text-sm hover:underline"
+            >
+                Check for updates
+            </button>
+        </div>
+      );
+  }
+
+  // Ensure currentQ exists before rendering game loop
+  if (!currentQ) return null; 
 
   return (
     <div className="pt-20 pb-32 min-h-screen flex flex-col items-center">

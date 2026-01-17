@@ -21,7 +21,7 @@ const getEnv = (key: string): string => {
 // Construct dynamic manifest URL to prevent CORS errors during testing/deployment
 const getManifestUrl = () => {
     // If explicitly set in env, use it
-    const envUrl = getEnv('VITE_MANIFEST_URL');
+    const envUrl = getEnv('MANIFEST_URL');
     if (envUrl) return envUrl;
 
     // Otherwise, construct based on current location
